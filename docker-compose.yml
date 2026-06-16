@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: isler_pg
+    environment:
+      POSTGRES_DB: ${PG_DB:-isler}
+      POSTGRES_USER: ${PG_USER:-isler}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-isler_dev_pwd}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-isler} -d ${PG_DB:-isler}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: isler_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # FastAPI: auth, RBAC, ingest/job/dashboard CRUD + tetikleme. Logo'ya bağlanmaz.
+  backend:
+    build: ./backend
+    image: isler_platform_backend
+    container_name: isler_backend
+    command: ["api"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: &app_env
+      APP_PG_URL: postgresql+psycopg2://${PG_USER:-isler}:${PG_PASSWORD:-isler_dev_pwd}@postgres:5432/${PG_DB:-isler}
+      APP_REDIS_URL: redis://redis:6379/0
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-secret-change-me}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+      # Logo erişimi (worker/beat kullanır; backend kullanmaz ama imaj paylaşıldığı için env burada da var)
+      LOGO_SERVER: ${LOGO_SERVER:-192.168.46.174}
+      LOGO_PORT: ${LOGO_PORT:-1433}
+      LOGO_USER: ${LOGO_USER:-mert}
+      LOGO_PASSWORD: ${LOGO_PASSWORD:-}
+      LOGO_DB: ${LOGO_DB:-LOGO}
+      META_DB: ${META_DB:-META}
+      LOGO_PERIOD: ${LOGO_PERIOD:-01}
+      HISTORY_START_YEAR: ${HISTORY_START_YEAR:-2023}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  # Celery worker: ingest + kullanıcı transform job'larını çalıştırır. Logo + Postgres erişimi.
+  worker:
+    build: ./backend
+    image: isler_platform_backend
+    container_name: isler_worker
+    command: ["worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: *app_env
+    restart: unless-stopped
+
+  # Celery Beat: zamanlanmış job'lar (günlük ingest, zamanlı transform'lar).
+  beat:
+    build: ./backend
+    image: isler_platform_backend
+    container_name: isler_beat
+    command: ["beat"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment: *app_env
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: isler_frontend
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
