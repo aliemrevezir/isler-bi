@@ -16,3 +16,4 @@ python-tds==1.15.0
 celery[redis]==5.3.6
 redis==5.0.1
 croniter==2.0.1
+watchdog==4.0.1

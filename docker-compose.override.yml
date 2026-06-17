@@ -1,0 +1,33 @@
+# Dev modu: kaynak kodu container'a mount edip canlı reload sağlar.
+# docker-compose.yml ile OTOMATİK birleşir (override). Prod'da kullanmak için:
+#   docker compose -f docker-compose.yml up -d   (override'ı atla)
+services:
+  backend:
+    # Kod imaj yerine diskten okunur -> değişiklik anında uvicorn --reload
+    volumes:
+      - ./backend:/app
+    environment:
+      APP_RELOAD: "1"
+
+  worker:
+    # .py değişince watchmedo worker'ı yeniden başlatır
+    volumes:
+      - ./backend:/app
+    environment:
+      APP_RELOAD: "1"
+
+  beat:
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    # nginx yerine Vite dev server (HMR ile anlık yansıma)
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 80"
+    environment:
+      VITE_PROXY_TARGET: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      # node_modules host'tan değil container'dan (alpine/linux binary'leri için)
+      - /app/node_modules
