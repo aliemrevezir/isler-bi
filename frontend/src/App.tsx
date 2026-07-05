@@ -8,6 +8,7 @@ import DashboardEditor from "./pages/DashboardEditor";
 import Jobs from "./pages/Jobs";
 import JobEditor from "./pages/JobEditor";
 import Ingest from "./pages/Ingest";
+import Users from "./pages/Users";
 
 function FullScreenLoader() {
   return (
@@ -27,6 +28,12 @@ function Protected({ children }: { children: ReactNode }) {
 function EditorsOnly({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   if (!canEdit(user?.role)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function AdminOnly({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (user?.role !== "admin") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -94,6 +101,16 @@ export default function App() {
             <EditorsOnly>
               <Ingest />
             </EditorsOnly>
+          </Protected>
+        }
+      />
+      <Route
+        path="/users"
+        element={
+          <Protected>
+            <AdminOnly>
+              <Users />
+            </AdminOnly>
           </Protected>
         }
       />

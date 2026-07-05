@@ -138,9 +138,12 @@ docker exec isler_worker python -m app.ingest.run --backfill --from 2023-01-01
 
 ## Deploy sonrası SERTLEŞTİRME (atlanmamalı)
 
-- [ ] **Demo şifrelerini değiştir.** Seed `admin/admin123`, `analist/analist123`, `viewer/viewer123`
-      basıyor. İlk girişte admin şifresini değiştir; kullanılmayanı pasifleştir.
-- [ ] İhsan için ayrı kullanıcı (uygun rol) aç; `rapor.veriz.co` + kullanıcı/şifre paylaş.
+- [ ] **Demo kullanıcıları temizle** (admin ile giriş → **Kullanıcılar** sayfası):
+      İlk `admin`'in parolasını değiştir, `analist`/`viewer` demo hesaplarını sil.
+      Seed artık yalnız **boş DB'de** tek admin bootstrap ediyor (env: `APP_ADMIN_USER`/
+      `APP_ADMIN_PASSWORD`); silinen hesaplar yeniden başlatmada geri gelmez.
+- [ ] İhsan için **Kullanıcılar** sayfasından ayrı bir `viewer` hesabı aç; `rapor.veriz.co` +
+      kullanıcı/şifre paylaş.
 - [ ] Postgres yedeği (cron): `docker exec isler_pg pg_dump -U isler isler | gzip > /backup/isler_$(date +\%F).sql.gz`
 - [ ] Platform portları zaten `127.0.0.1`'e bind; VPS firewall'da 5432/6379/8000/8091 dışarı kapalı olsun.
 

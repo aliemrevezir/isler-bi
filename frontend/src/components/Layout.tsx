@@ -6,6 +6,7 @@ import {
   DashboardIcon,
   JobsIcon,
   IngestIcon,
+  UsersIcon,
   SunIcon,
   MoonIcon,
   LogoutIcon,
@@ -17,12 +18,14 @@ interface NavItem {
   label: string;
   icon: typeof DashboardIcon;
   editorsOnly?: boolean;
+  adminOnly?: boolean;
 }
 
 const NAV: NavItem[] = [
   { to: "/", label: "Dashboardlar", icon: DashboardIcon },
   { to: "/jobs", label: "İşler", icon: JobsIcon, editorsOnly: true },
   { to: "/ingest", label: "Veri Çekme", icon: IngestIcon, editorsOnly: true },
+  { to: "/users", label: "Kullanıcılar", icon: UsersIcon, adminOnly: true },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
@@ -44,7 +47,10 @@ export default function Layout({
   const { theme, toggle } = useTheme();
   const [open, setOpen] = useState(false);
   const editor = canEdit(user?.role);
-  const items = NAV.filter((i) => !i.editorsOnly || editor);
+  const isAdmin = user?.role === "admin";
+  const items = NAV.filter(
+    (i) => (!i.editorsOnly || editor) && (!i.adminOnly || isAdmin)
+  );
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">

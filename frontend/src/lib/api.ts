@@ -10,6 +10,15 @@ export interface User {
   role: Role;
 }
 
+export interface AdminUser {
+  id: number;
+  username: string;
+  full_name?: string;
+  role: Role;
+  is_active: boolean;
+  created_at?: string;
+}
+
 export interface Kpi {
   key: string;
   label: string;
@@ -215,6 +224,23 @@ export const authApi = {
     });
   },
   me: () => api.get<User>("/auth/me"),
+};
+
+export const usersApi = {
+  list: () => api.get<AdminUser[]>("/users"),
+  create: (body: {
+    username: string;
+    password: string;
+    full_name?: string;
+    role: Role;
+  }) => api.post<AdminUser>("/users", body),
+  update: (
+    id: number,
+    body: Partial<{ full_name: string; role: Role; is_active: boolean }>
+  ) => api.patch<AdminUser>(`/users/${id}`, body),
+  setPassword: (id: number, password: string) =>
+    api.post(`/users/${id}/password`, { password }),
+  remove: (id: number) => api.delete(`/users/${id}`),
 };
 
 export const ingestApi = {

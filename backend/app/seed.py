@@ -1,4 +1,5 @@
 """Şema + tablo oluşturma ve ilk veri (idempotent). API açılışında çalışır."""
+import os
 import sys
 
 from sqlalchemy import text
@@ -39,18 +40,22 @@ def reconcile_orphans() -> None:
 
 
 def seed_users(db) -> None:
-    defaults = [
-        ("admin", "Admin", "admin", "admin123"),
-        ("analist", "Analist", "analyst", "analist123"),
-        ("viewer", "İzleyici", "viewer", "viewer123"),
-    ]
-    for username, full_name, role, pwd in defaults:
-        if not db.query(User).filter_by(username=username).first():
-            db.add(User(
-                username=username, full_name=full_name, role=role,
-                password_hash=hash_password(pwd), is_active=True,
-            ))
+    """İlk açılış bootstrap'i: YALNIZ hiç kullanıcı yoksa tek bir admin oluştur.
+
+    Kullanıcı yönetimi artık UI'dan (admin) yapılıyor. Silinen kullanıcıların
+    yeniden başlatmada geri gelmemesi için burada sabit demo hesap BASILMAZ.
+    İlk admin bilgisi env'den okunur (APP_ADMIN_USER / APP_ADMIN_PASSWORD).
+    """
+    if db.query(User).first():
+        return
+    username = os.environ.get("APP_ADMIN_USER", "admin")
+    password = os.environ.get("APP_ADMIN_PASSWORD", "admin123")
+    db.add(User(
+        username=username, full_name="Yönetici", role="admin",
+        password_hash=hash_password(password), is_active=True,
+    ))
     db.commit()
+    print(f"[seed] ilk yönetici oluşturuldu: {username}", file=sys.stderr)
 
 
 def seed_permissions(db) -> None:

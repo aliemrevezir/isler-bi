@@ -97,15 +97,6 @@ export default function Login() {
             {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
           </button>
         </form>
-
-        <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
-          <p className="mb-1 font-medium text-slate-600 dark:text-slate-300">
-            Demo hesapları
-          </p>
-          <p>admin / admin123</p>
-          <p>analist / analist123</p>
-          <p>viewer / viewer123</p>
-        </div>
       </div>
     </div>
   );
