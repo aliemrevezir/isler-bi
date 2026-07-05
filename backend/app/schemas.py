@@ -18,6 +18,34 @@ class LoginOut(BaseModel):
     user: UserOut
 
 
+# --- Kullanıcı yönetimi (admin) ---
+class UserAdminOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    username: str
+    full_name: str | None = None
+    role: str
+    is_active: bool
+    created_at: datetime | None = None
+
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    full_name: str | None = None
+    role: str = "viewer"
+
+
+class UserUpdate(BaseModel):
+    full_name: str | None = None
+    role: str | None = None
+    is_active: bool | None = None
+
+
+class PasswordIn(BaseModel):
+    password: str
+
+
 # --- Jobs ---
 class JobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

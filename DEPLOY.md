@@ -11,9 +11,10 @@ runbook'u. İhsan `https://rapor.veriz.co` üzerinden mağaza & yayınevi raporl
   80/443'ü yönetiyor ve otomatik HTTPS yapıyor. `rapor.veriz.co`'yu ona bir site bloğu olarak
   ekliyoruz; `query.veriz.co` (POMS) ile aynı desen. Şube Sipariş compose'una dokunulmaz.
 - **Logo erişimi:** VPS özel LAN'daki Logo MSSQL'e (`192.168.46.174`) doğrudan erişemez. Ofisteki
-  **Windows** makinesinden VPS'e reverse-SSH tüneli (NSSM servisi) açılır; yalnız `Logo:1433`'ü VPS
-  docker gateway'ine (`172.28.0.1:1433`) taşır. Ofis firewall'ında inbound port açılmaz.
-  Bkz. [deploy/logo-tunnel-windows.md](deploy/logo-tunnel-windows.md).
+  **Windows** makinesinden VPS'e reverse-SSH tüneli açılır; yalnız `Logo:1433`'ü VPS docker
+  gateway'ine (`172.28.0.1:1433`) taşır. Tünel **7/24 açık değil** — Task Scheduler günlük 05:55'te
+  açıp ~50 dk sonra kapatır (06:00 ingest penceresi); ad-hoc'ta elle açılır. Ofis firewall'ında
+  inbound port açılmaz. Bkz. [deploy/logo-tunnel-windows.md](deploy/logo-tunnel-windows.md).
 - **Güvenlik:** Logo'ya read-only `isler_ro` kullanıcısı ile bağlanılır (yalnız `LOGO`/`META`).
 
 ```
@@ -115,7 +116,8 @@ Sertifika/log kontrol: `docker logs -f sube-siparis-web-1`
 ## Adım 6 — Logo tüneli (Windows ofis makinesi)
 
 [deploy/logo-tunnel-windows.md](deploy/logo-tunnel-windows.md) adımlarını izle: OpenSSH client,
-anahtar üret, public key'i Adım 3'teki `tunnel` kullanıcısına ekle, NSSM servisi kur.
+anahtar üret, public key'i Adım 3'teki `tunnel` kullanıcısına ekle, önce elle test et, sonra
+Task Scheduler ile günlük pencere (05:55, 50 dk) kur.
 
 Doğrulama (VPS'te, stack ayakta + tünel kurulu):
 

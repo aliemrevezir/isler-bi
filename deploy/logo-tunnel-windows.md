@@ -4,8 +4,9 @@ Ofisteki, Logo LAN'ına (`192.168.46.174`) erişimi olan **sürekli açık Windo
 Amaç: Windows'tan VPS'e giden reverse-SSH tüneli; yalnız `192.168.46.174:1433`'ü VPS docker
 gateway'ine (`172.28.0.1:1433`) taşır. Ofis firewall'ında inbound port açılmaz (yalnız giden SSH).
 
-> Windows'ta `autossh` yok. Yerine **built-in OpenSSH client + NSSM servisi** kullanıyoruz
-> (NSSM süreç ölürse otomatik yeniden başlatır — autossh'in Windows karşılığı).
+> Tünel **7/24 açık DEĞİL** — güvenlik için yalnız ihtiyaç halinde açılır. Ingest günde bir kez
+> (beat, 06:00) çalıştığından, Task Scheduler tüneli 05:55'te açıp ~50 dk sonra otomatik kapatır.
+> Ad-hoc ingest için task elle "Run" edilir.
 
 ## Ön koşullar (VPS tarafı — DEPLOY.md Adım 3 ile aynı)
 
@@ -66,48 +67,37 @@ docker exec isler_worker python -c "import socket; socket.create_connection(('17
 
 `Logo OK` görüyorsan tünel çalışıyor. Ctrl+C ile testi kapat, servise geç.
 
-## Adım 4 — Kalıcı servis (NSSM)
+## Adım 4 — İhtiyaç halinde açılan tünel (Task Scheduler penceresi)
+
+Tüneli sürekli açık tutmuyoruz. Task Scheduler günlük **05:55**'te açar, **ExecutionTimeLimit**
+ile ~50 dk sonra otomatik kapatır (06:00 ingest'i kapsar). PowerShell (yönetici):
 
 ```powershell
-# NSSM indir: https://nssm.cc/download  -> nssm.exe'yi C:\logo-tunnel\ içine koy
-cd C:\logo-tunnel
-.\nssm.exe install LogoTunnel "C:\Windows\System32\OpenSSH\ssh.exe" `
-  "-N -i C:\logo-tunnel\id_tunnel -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -R 172.28.0.1:1433:192.168.46.174:1433 tunnel@VPS_PUBLIC_IP"
-
-# Otomatik başlat + çökerse yeniden başlat (NSSM varsayılanı zaten restart)
-.\nssm.exe set LogoTunnel Start SERVICE_AUTO_START
-.\nssm.exe set LogoTunnel AppExit Default Restart
-.\nssm.exe set LogoTunnel AppRestartDelay 10000
-.\nssm.exe start LogoTunnel
+$action  = New-ScheduledTaskAction -Execute "C:\Windows\System32\OpenSSH\ssh.exe" `
+  -Argument '-N -i C:\logo-tunnel\id_tunnel -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -R 172.28.0.1:1433:192.168.46.174:1433 tunnel@VPS_PUBLIC_IP'
+$trigger  = New-ScheduledTaskTrigger -Daily -At 5:55AM
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 50) -StartWhenAvailable
+Register-ScheduledTask -TaskName "LogoTunnel-Ingest" -Action $action -Trigger $trigger `
+  -Settings $settings -User "SYSTEM" -RunLevel Highest
 ```
 
-Kontrol / yönetim:
+Notlar:
+- `-User "SYSTEM"` çalışır çünkü Adım 2'deki `icacls` anahtarı SYSTEM'e okuma verdi.
+- Windows yerel saati **Europe/Istanbul** olmalı (beat 06:00 Istanbul). Değilse trigger saatini kaydır.
+- Ingest > 50 dk sürerse `ExecutionTimeLimit`'i artır.
+
+### Ad-hoc (elle) ingest
 
 ```powershell
-Get-Service LogoTunnel
-.\nssm.exe status LogoTunnel
-.\nssm.exe restart LogoTunnel
-# Logları dosyaya almak istersen:
-# .\nssm.exe set LogoTunnel AppStdout C:\logo-tunnel\out.log
-# .\nssm.exe set LogoTunnel AppStderr C:\logo-tunnel\err.log
+Start-ScheduledTask -TaskName "LogoTunnel-Ingest"   # tüneli hemen açar (50 dk pencere)
+# ...UI'dan "Şimdi Çek" ya da VPS'te ingest çalıştır...
+Stop-ScheduledTask  -TaskName "LogoTunnel-Ingest"   # işin bitince erken kapat (opsiyonel)
 ```
 
-## NSSM istemiyorsan — Task Scheduler alternatifi
+Durum/log: `Get-ScheduledTask LogoTunnel-Ingest | Get-ScheduledTaskInfo`
 
-`C:\logo-tunnel\tunnel.ps1`:
-
-```powershell
-while ($true) {
-  ssh -N -i C:\logo-tunnel\id_tunnel `
-    -o ServerAliveInterval=30 -o ServerAliveCountMax=3 `
-    -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new `
-    -R 172.28.0.1:1433:192.168.46.174:1433 tunnel@VPS_PUBLIC_IP
-  Start-Sleep -Seconds 10   # kopunca 10 sn sonra yeniden dene
-}
-```
-
-Task Scheduler: "At startup" tetikleyici, "Run whether user is logged on or not",
-komut: `powershell -ExecutionPolicy Bypass -File C:\logo-tunnel\tunnel.ps1`.
+> Alternatif — tünelin 7/24 açık olmasını istersen NSSM ile servis yapılabilir
+> (`nssm install LogoTunnel ssh.exe "..."`), ama bu proje bilinçli olarak pencere yaklaşımını seçti.
 
 ## Sorun giderme
 
