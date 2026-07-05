@@ -65,6 +65,11 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script_stop: true
           script: |
+            set -euo pipefail
+            # github.com host key'ini known_hosts'a garanti et (git pull non-interaktif)
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+            sort -u ~/.ssh/known_hosts -o ~/.ssh/known_hosts
             cd /opt/isler-bi
             git pull --ff-only
             docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod pull
