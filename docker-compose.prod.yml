@@ -2,13 +2,27 @@
 # Dev override (docker-compose.override.yml) yalnız düz `docker compose up` ile otomatik gelir;
 # aşağıdaki gibi -f ile dosyaları açıkça sayınca YÜKLENMEZ:
 #
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
 #
-# TLS/80/443'ü mevcut `sube-siparis` Caddy'si (sube-siparis-web-1) yönetir. Kendi Caddy'miz YOK.
-# frontend'i mevcut Caddy'nin ağına (sube-siparis_default) bağlıyoruz; Caddyfile'a eklenen
-# `rapor.veriz.co` bloğu `isler_frontend:80`'e proxy'ler (bkz. deploy/rapor-caddy-block.txt).
+# CI/CD: imajlar GitHub Actions'ta build edilip GHCR'a push edilir; VPS yalnız `pull` eder
+# (prod'da build yok). Bkz. deploy/ci-cd-setup.md.
+# TLS/80/443'ü mevcut sube-siparis Caddy'si yönetir; frontend paylaşımlı ağa bağlanır.
 services:
+  backend:
+    image: ghcr.io/aliemrevezir/isler-bi-backend:latest
+    pull_policy: always
+
+  worker:
+    image: ghcr.io/aliemrevezir/isler-bi-backend:latest
+    pull_policy: always
+
+  beat:
+    image: ghcr.io/aliemrevezir/isler-bi-backend:latest
+    pull_policy: always
+
   frontend:
+    image: ghcr.io/aliemrevezir/isler-bi-frontend:latest
+    pull_policy: always
     # default: backend'e /api proxy'si için. sube-siparis_default: dış Caddy erişimi için.
     networks:
       - default
