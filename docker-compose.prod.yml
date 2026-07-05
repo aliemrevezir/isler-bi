@@ -1,0 +1,28 @@
+# Production katmanı — base compose ile AÇIKÇA birlikte yüklenir.
+# Dev override (docker-compose.override.yml) yalnız düz `docker compose up` ile otomatik gelir;
+# aşağıdaki gibi -f ile dosyaları açıkça sayınca YÜKLENMEZ:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# TLS/80/443'ü mevcut `sube-siparis` Caddy'si (sube-siparis-web-1) yönetir. Kendi Caddy'miz YOK.
+# frontend'i mevcut Caddy'nin ağına (sube-siparis_default) bağlıyoruz; Caddyfile'a eklenen
+# `rapor.veriz.co` bloğu `isler_frontend:80`'e proxy'ler (bkz. deploy/rapor-caddy-block.txt).
+services:
+  frontend:
+    # default: backend'e /api proxy'si için. sube-siparis_default: dış Caddy erişimi için.
+    networks:
+      - default
+      - sube-siparis_default
+
+networks:
+  # Base'in örtük "default" ağını sabit adreslemeye çekiyoruz.
+  # 172.28.0.1 (gateway) VPS host'ta durur; ofisten gelen reverse-SSH tüneli
+  # bu adrese 1433 bağlar, worker/beat LOGO_SERVER=172.28.0.1 ile Logo'ya ulaşır.
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+  # Mevcut sube-siparis Caddy'sinin bulunduğu ağ. Zaten var (sube-siparis stack'i oluşturdu).
+  sube-siparis_default:
+    external: true

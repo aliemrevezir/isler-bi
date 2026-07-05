@@ -44,10 +44,11 @@ export interface DashResult {
 export interface FilterDef {
   key: string;
   label: string;
-  type: "month" | "select" | "multiselect" | "toggle";
+  type: "month" | "select" | "multiselect" | "toggle" | "text";
   default?: string;
   min?: string;
   max?: string;
+  placeholder?: string;
   options?: { value: string; label: string }[];
 }
 

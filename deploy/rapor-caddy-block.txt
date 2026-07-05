@@ -1,0 +1,12 @@
+# Bu bloğu VPS'te /root/sube-siparis/frontend/Caddyfile dosyasının SONUNA ekle,
+# sonra Caddy'yi sıfır kesintiyle yeniden yükle:
+#   docker exec sube-siparis-web-1 caddy reload --config /etc/caddy/Caddyfile
+#
+# Ön koşul: isler_frontend container'ı Caddy ile aynı docker ağında olmalı
+# (docker-compose.prod.yml frontend'i sube-siparis ağına bağlar). DNS ile isimle çözülür.
+
+# --- İşler Veri Platformu (mağaza & yayınevi raporları) ---
+rapor.veriz.co {
+	encode gzip
+	reverse_proxy isler_frontend:80
+}

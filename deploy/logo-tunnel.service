@@ -1,0 +1,38 @@
+# OFİSTEKİ (Logo LAN'ına erişimi olan) makinede kurulur — VPS'te DEĞİL.
+# Amaç: ofisten VPS'e giden reverse-SSH tüneli. Logo MSSQL'i VPS'in docker gateway'ine
+# (172.28.0.1:1433) taşır. Ofis firewall'ında hiçbir inbound port açılmaz (yalnız giden SSH).
+#
+# Kurulum (ofis makinesinde, root):
+#   sudo apt install -y autossh
+#   sudo useradd -r -s /usr/sbin/nologin logotunnel || true
+#   sudo -u logotunnel ssh-keygen -t ed25519 -f /home/logotunnel/.ssh/id_tunnel -N ""
+#   # public key'i VPS'teki kısıtlı 'tunnel' kullanıcısına ekle (bkz. DEPLOY.md)
+#   sudo cp deploy/logo-tunnel.service /etc/systemd/system/
+#   # Aşağıdaki VPS_PUBLIC_IP'yi düzenle, sonra:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now logo-tunnel
+#
+# Kontrol: sudo systemctl status logo-tunnel   |   journalctl -u logo-tunnel -f
+
+[Unit]
+Description=Reverse SSH tunnel: Ofis Logo MSSQL -> VPS docker gateway (172.28.0.1:1433)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=logotunnel
+Environment=AUTOSSH_GATETIME=0
+# -M 0: autossh'in kendi monitör portu yerine SSH keepalive kullan
+# ExitOnForwardFailure: bind başarısızsa (docker network henüz yoksa) çık, autossh yeniden dener
+ExecStart=/usr/bin/autossh -M 0 -N \
+  -o ServerAliveInterval=30 \
+  -o ServerAliveCountMax=3 \
+  -o ExitOnForwardFailure=yes \
+  -o StrictHostKeyChecking=accept-new \
+  -i /home/logotunnel/.ssh/id_tunnel \
+  -R 172.28.0.1:1433:192.168.46.174:1433 \
+  tunnel@VPS_PUBLIC_IP
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

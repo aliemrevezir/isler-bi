@@ -1,5 +1,7 @@
 """Dashboards CRUD + kod/versiyon + meta(filter_schema) + run + export."""
 import io
+import logging
+import time
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,6 +22,7 @@ from ..schemas import (
 )
 
 router = APIRouter()
+logger = logging.getLogger("isler.perf")
 
 STARTER = '''"""Dashboard: derived → {kpis, charts, table}. (read-only)
 
@@ -154,7 +157,11 @@ def run_dashboard_ep(key: str, body: DashboardRunIn, db: Session = Depends(get_d
     dash = db.query(Dashboard).filter_by(key=key).first()
     if not dash:
         raise HTTPException(status_code=404, detail="Dashboard bulunamadı")
-    return _run_code(dash.code, body.filters)
+    t0 = time.perf_counter()
+    result = _run_code(dash.code, body.filters)
+    logger.info("run dashboard=%s total=%.0fms filters=%s",
+                key, (time.perf_counter() - t0) * 1000, body.filters)
+    return result
 
 
 @router.post("/{key}/test")

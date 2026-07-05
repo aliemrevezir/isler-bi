@@ -106,6 +106,15 @@ export default function Filters({
               className={inputCls}
             />
           )}
+          {def.type === "text" && (
+            <input
+              type="text"
+              placeholder={def.placeholder ?? "İçerir..."}
+              value={(values[def.key] as string) ?? def.default ?? ""}
+              onChange={(e) => set(def.key, e.target.value)}
+              className={inputCls}
+            />
+          )}
           {def.type === "select" && (
             <select
               value={(values[def.key] as string) ?? def.default ?? ""}

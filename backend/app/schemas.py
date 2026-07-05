@@ -93,6 +93,27 @@ class DashboardRunIn(BaseModel):
     filters: dict = {}
 
 
+# --- Parametreler: cari hedef ---
+class CariHedefOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    cari: str
+    duzey: str
+    nufus: int | None = None
+    perakende_hedef: int | None = None
+    kurumsal_hedef: int | None = None
+    updated_by: str | None = None
+    updated_at: datetime | None = None
+
+
+class CariHedefIn(BaseModel):
+    cari: str
+    duzey: str  # ORTAOKUL | LİSE
+    nufus: int | None = None
+    perakende_hedef: int | None = None
+    kurumsal_hedef: int | None = None
+
+
 # --- Ingest ---
 class IngestStateOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

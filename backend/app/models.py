@@ -155,6 +155,29 @@ class IngestRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class CariHedef(Base):
+    """Cari × düzey planlama parametreleri (Excel `values` sayfasının karşılığı).
+
+    Düzenlenebilir; dashboard'lar 'Gönderilecek Adet' için nüfus/hedef'i buradan okur.
+    """
+    __tablename__ = "cari_hedef"
+    __table_args__ = (
+        UniqueConstraint("cari", "duzey", name="uq_cari_hedef"),
+        {"schema": SCHEMA_APP},
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cari: Mapped[str] = mapped_column(String(64), index=True)          # bayii kodu (B.xx)
+    duzey: Mapped[str] = mapped_column(String(16))                     # ORTAOKUL | LİSE
+    nufus: Mapped[int | None] = mapped_column(Integer)                 # düzey öğrenci nüfusu
+    perakende_hedef: Mapped[int | None] = mapped_column(Integer)
+    kurumsal_hedef: Mapped[int | None] = mapped_column(Integer)
+    updated_by: Mapped[str | None] = mapped_column(String(64))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class Permission(Base):
     """Kaynak-bazlı izin. resource_type: job|dashboard|ingest, resource_key: '*' veya belirli key."""
     __tablename__ = "permissions"

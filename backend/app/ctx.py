@@ -3,12 +3,16 @@
 - JobContext: raw/derived okur, derived.<job_key>__<name> yazar.
 - DashboardContext: yalnız okur (read-only), filtreleri taşır.
 """
+import logging
 import re
+import time
 
 import pandas as pd
 from sqlalchemy import text
 
 from .db import SCHEMA_DERIVED, engine
+
+logger = logging.getLogger("isler.perf")
 
 
 def _safe_ident(name: str) -> str:
@@ -95,21 +99,32 @@ class JobContext:
         self.progress(message=message)
 
     def read_sql(self, sql: str, params: dict | None = None) -> pd.DataFrame:
+        t0 = time.perf_counter()
         with engine.connect() as conn:
-            return pd.read_sql(text(sql), conn, params=params or {})
+            df = pd.read_sql(text(sql), conn, params=params or {})
+        ms = (time.perf_counter() - t0) * 1000
+        logger.info("read_sql job=%s %.0fms rows=%d | %s",
+                    self.job_key, ms, len(df), " ".join(sql.split())[:160])
+        return df
 
     def write_table(self, name: str, df: pd.DataFrame,
-                    mode: str = "replace", key: list[str] | None = None) -> int:
+                    mode: str = "replace", key: list[str] | None = None,
+                    indexes: list[list[str]] | None = None) -> int:
         """derived.<job_key>__<name> tablosuna yazar.
 
         mode="replace": tabloyu yeniden oluştur.
         mode="append":  ekle. key verilirse upsert (eşleşen anahtarları silip ekler).
+        indexes: replace sonrası oluşturulacak indeksler; her biri kolon listesi
+                 (ör. [["category", "periyot"], ["dealer_code"]]). Filtre/agregasyon
+                 kolonlarına verilince dashboard sorguları hızlı kalır.
         """
         short = _safe_ident(name)
         table = f"{self.job_key}__{short}"
         if mode == "replace":
             df.to_sql(table, engine, schema=SCHEMA_DERIVED, if_exists="replace",
                       index=False, chunksize=5000, method="multi")
+            if indexes:
+                self._create_indexes(table, indexes)
         elif mode == "append":
             if key:
                 self._delete_keys(table, df, key)
@@ -120,6 +135,18 @@ class JobContext:
         self.rows_out += len(df)
         self.logger.info(f"yazıldı: {SCHEMA_DERIVED}.{table} ({len(df)} satır, mode={mode})")
         return len(df)
+
+    def _create_indexes(self, table: str, indexes: list[list[str]]):
+        with engine.begin() as conn:
+            for i, cols in enumerate(indexes):
+                safe = [_safe_ident(c) for c in cols]
+                idx = f"ix_{table}_{i}"
+                collist = ", ".join(f'"{c}"' for c in safe)
+                conn.execute(text(
+                    f'CREATE INDEX IF NOT EXISTS "{idx}" '
+                    f'ON {SCHEMA_DERIVED}."{table}" ({collist})'
+                ))
+        self.logger.info(f"indeks: {SCHEMA_DERIVED}.{table} ({len(indexes)} adet)")
 
     def _delete_keys(self, table: str, df: pd.DataFrame, key: list[str]):
         # Tablo yoksa silme gerekmez (ilk yazım)
@@ -150,5 +177,10 @@ class DashboardContext:
         self.logger = _Logger()
 
     def read_sql(self, sql: str, params: dict | None = None) -> pd.DataFrame:
+        t0 = time.perf_counter()
         with engine.connect() as conn:
-            return pd.read_sql(text(sql), conn, params=params or {})
+            df = pd.read_sql(text(sql), conn, params=params or {})
+        ms = (time.perf_counter() - t0) * 1000
+        logger.info("read_sql dashboard %.0fms rows=%d | %s",
+                    ms, len(df), " ".join(sql.split())[:160])
+        return df

@@ -6,8 +6,9 @@ services:
       POSTGRES_DB: ${PG_DB:-isler}
       POSTGRES_USER: ${PG_USER:-isler}
       POSTGRES_PASSWORD: ${PG_PASSWORD:-isler_dev_pwd}
+    # Yalnız localhost'a bind — VPS'te public'e açılmaz. Container'lar ağ üzerinden erişir.
     ports:
-      - "${PG_PORT:-5432}:5432"
+      - "127.0.0.1:${PG_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +21,7 @@ services:
     image: redis:7-alpine
     container_name: isler_redis
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -53,7 +54,7 @@ services:
       LOGO_PERIOD: ${LOGO_PERIOD:-01}
       HISTORY_START_YEAR: ${HISTORY_START_YEAR:-2023}
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     restart: unless-stopped
 
   # Celery worker: ingest + kullanıcı transform job'larını çalıştırır. Logo + Postgres erişimi.
@@ -87,8 +88,9 @@ services:
     container_name: isler_frontend
     depends_on:
       - backend
+    # Prod'da public erişim Caddy üzerinden (docker-compose.prod.yml). Host bind yalnız localhost.
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
     restart: unless-stopped
 
 volumes:

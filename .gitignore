@@ -1,4 +1,6 @@
 .env
+.env.prod
+*.xlsx
 __pycache__/
 *.pyc
 .venv/
